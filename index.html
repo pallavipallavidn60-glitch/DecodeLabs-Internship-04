@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>General Knowledge Quiz - Decision Engine</title>
+    
+    <!-- CSS STYLES -->
+    <style>
+        /* style.css */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e0f2f1; /* Light teal background from Slide 1 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            border-top: 5px solid #4caf50; /* Green accent */
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .score-board {
+            background-color: #2196f3; /* Blue from Slide 8 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .question-block {
+            display: none; /* Hidden by default */
+        }
+
+        .question-block.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            color: #34495e;
+            margin-bottom: 1rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #2196f3;
+            outline: none;
+        }
+
+        button {
+            background-color: #4caf50; /* Green from Slide 1 */
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #388e3c;
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .feedback {
+            margin-top: 1rem;
+            font-weight: bold;
+            min-height: 1.5rem;
+        }
+
+        .feedback.correct {
+            color: #27ae60;
+        }
+
+        .feedback.incorrect {
+            color: #e74c3c;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #result-area {
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        #result-area h2 {
+            color: #4caf50;
+        }
+
+        #final-score {
+            font-size: 2rem;
+            color: #2196f3;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🧠 General Knowledge Quiz</h1>
+            <div class="score-board">
+                Score: <span id="score-display">0</span>
+            </div>
+        </header>
+
+        <main id="quiz-area">
+            <!-- Question 1 -->
+            <div class="question-block active" id="q1-block">
+                <h2>Question 1: What is the capital of France?</h2>
+                <input type="text" id="answer-q1" placeholder="Type your answer here...">
+                <button onclick="submitAnswer('q1')">Submit Answer</button>
+                <p class="feedback" id="feedback-q1"></p>
+            </div>
+
+            <!-- Question 2 -->
+            <div class="question-block" id="q2-block">
+                <h2>Question 2: How many planets are in our solar system?</h2>
+                <input type="text" id="answer-q2" placeholder="Type your answer here...">
+                <button onclick="submitAnswer('q2')">Submit Answer</button>
+                <p class="feedback" id="feedback-q2"></p>
+            </div>
+
+            <!-- Question 3 -->
+            <div class="question-block" id="q3-block">
+                <h2>Question 3: What programming language is this project written in?</h2>
+                <input type="text" id="answer-q3" placeholder="Type your answer here...">
+                <button onclick="submitAnswer('q3')">Submit Answer</button>
+                <p class="feedback" id="feedback-q3"></p>
+            </div>
+
+            <!-- Results -->
+            <div id="result-area" class="hidden">
+                <h2>Quiz Complete!</h2>
+                <p>Your final score is: <strong id="final-score">0</strong></p>
+                <button onclick="resetQuiz()">Play Again</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // script.js
+
+        let currentQuestionIndex = 1;
+        const totalQuestions = 3;
+        let clientScore = 0;
+
+        async function submitAnswer(questionId) {
+            const inputElement = document.getElementById(`answer-${questionId}`);
+            const userAnswer = inputElement.value;
+            const feedbackElement = document.getElementById(`feedback-${questionId}`);
+            const button = inputElement.nextElementSibling; 
+
+            // Basic empty check (Slide 9: Operational Mapping - != '')
+            if (userAnswer.trim() === '') {
+                feedbackElement.textContent = "Please enter an answer.";
+                feedbackElement.className = "feedback incorrect";
+                return;
+            }
+
+            // Disable button to prevent double submission
+            button.disabled = true;
+            button.textContent = "Checking...";
+
+            try {
+                // Send data to the Python Backend (The Decision Engine)
+                const response = await fetch('/api/quiz', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        answer: userAnswer,
+                        question_id: questionId
+                    })
+                });
+
+                const data = await response.json();
+
+                // Process the Output (Slide 13)
+                if (data.status === "success") {
+                    feedbackElement.textContent = data.message;
+                    
+                    if (data.correct) {
+                        feedbackElement.className = "feedback correct";
+                        // Update the score display using the value returned from the backend
+                        clientScore = data.current_score;
+                        document.getElementById('score-display').textContent = clientScore;
+                    } else {
+                        feedbackElement.className = "feedback incorrect";
+                    }
+
+                    // Move to the next question after a short delay
+                    setTimeout(() => {
+                        moveToNextQuestion();
+                    }, 1500);
+
+                } else {
+                    feedbackElement.textContent = "Error communicating with server.";
+                }
+
+            } catch (error) {
+                console.error("Error:", error);
+                feedbackElement.textContent = "Network error. Is the server running?";
+            }
+        }
+
+        function moveToNextQuestion() {
+            // Hide current block
+            const currentBlock = document.getElementById(`q${currentQuestionIndex}-block`);
+            if (currentBlock) {
+                currentBlock.classList.remove('active');
+            }
+
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex <= totalQuestions) {
+                // Show next block
+                const nextBlock = document.getElementById(`q${currentQuestionIndex}-block`);
+                if (nextBlock) {
+                    nextBlock.classList.add('active');
+                }
+            } else {
+                // End of quiz
+                showResults();
+            }
+        }
+
+        function showResults() {
+            // Hide all question blocks
+            document.querySelectorAll('.question-block').forEach(block => {
+                block.classList.remove('active');
+            });
+
+            // Show result area
+            const resultArea = document.getElementById('result-area');
+            resultArea.classList.remove('hidden');
+            
+            // Display final score
+            document.getElementById('final-score').textContent = `${clientScore} / ${totalQuestions}`;
+        }
+
+        async function resetQuiz() {
+            // Reset backend state
+            try {
+                const response = await fetch('/api/reset', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === "reset") {
+                    // Reset frontend state
+                    clientScore = 0;
+                    currentQuestionIndex = 1;
+                    document.getElementById('score-display').textContent = '0';
+                    
+                    // Clear inputs and feedback
+                    document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+                    document.querySelectorAll('.feedback').forEach(el => {
+                        el.textContent = '';
+                        el.className = 'feedback';
+                    });
+                    document.querySelectorAll('button').forEach(btn => {
+                        btn.disabled = false;
+                        btn.textContent = 'Submit Answer';
+                    });
+
+                    // Hide results, show first question
+                    document.getElementById('result-area').classList.add('hidden');
+                    document.getElementById('q1-block').classList.add('active');
+                }
+            } catch (error) {
+                console.error("Error resetting quiz:", error);
+            }
+        }
+    </script>
+</body>
+</html>
